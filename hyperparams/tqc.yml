@@ -163,6 +163,26 @@ Swimmer-v3:
   <<: *mujoco-defaults
   gamma: 0.9999
 
+MyCobotVision-v0:
+  <<: *mujoco-defaults
+  n_timesteps: !!float 2000000
+  batch_size: 256
+  buffer_size: 10000
+  gamma: 0.95
+  learning_rate: 0.001
+  n_envs: 2
+  policy: 'MultiInputPolicy'
+
+#MyCobotFetchReach-Sparse-IK-v0:
+#  <<: *mujoco-defaults
+#  n_timesteps: !!float 2000000
+#  batch_size: 256
+#  buffer_size: 10000
+#  gamma: 0.95
+#  learning_rate: 0.001
+#  n_envs: 2
+#  policy: 'MultiInputPolicy'
+
 # === HER Robotics GoalEnvs ===
 FetchReach-v1:
   n_timesteps: !!float 20000

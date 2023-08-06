@@ -255,6 +255,7 @@ def train() -> None:
     # Prepare experiment and launch hyperparameter optimization if needed
     results = exp_manager.setup_experiment()
     if results is not None:
+        print("Results not none.")
         model, saved_hyperparams = results
         if args.track:
             # we need to save the loaded hyperparameters

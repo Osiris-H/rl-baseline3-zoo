@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import argparse
 import importlib
 import os
@@ -6,6 +8,8 @@ import sys
 import numpy as np
 import torch as th
 import yaml
+import cv2
+from PIL import Image
 from huggingface_sb3 import EnvironmentName
 from stable_baselines3.common.callbacks import tqdm
 from stable_baselines3.common.utils import set_random_seed
@@ -17,7 +21,25 @@ from rl_zoo3.load_from_hub import download_from_hub
 from rl_zoo3.utils import StoreDict, get_model_path
 
 
+class Logger(object):
+    def __init__(self, filename='default.log', stream=sys.stdout):
+        self.terminal = stream
+        self.log = open(filename, 'w')
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+
+    def flush(self):
+        pass
+
+
 def enjoy() -> None:  # noqa: C901
+    if os.path.exists('eval_agent.txt'):
+        log = open('eval_agent.txt', mode='w', encoding='utf-8')
+    else:
+        log = open('eval_agent.txt', mode='a', encoding='utf-8')
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", help="environment ID", type=EnvironmentName, default="CartPole-v1")
     parser.add_argument("-f", "--folder", help="Log folder", type=str, default="rl-trained-agents")
@@ -213,6 +235,8 @@ def enjoy() -> None:  # noqa: C901
             raise ImportError("Please install tqdm and rich to use the progress bar")
         generator = tqdm(generator)
 
+    frames = []
+    idx = 0
     try:
         for _ in generator:
             action, lstm_states = model.predict(
@@ -222,11 +246,20 @@ def enjoy() -> None:  # noqa: C901
                 deterministic=deterministic,
             )
             obs, reward, done, infos = env.step(action)
-
             episode_start = done
 
             if not args.no_render:
-                env.render("human")
+                # pixels = env.render("human")
+                pixels = env.render("rgb_array")
+                # debug
+                if not done:
+                    # image = Image.fromarray(pixels)
+                    # img_dir = './images/temp/'
+                    # os.makedirs(img_dir, exist_ok=True)
+                    # image.save(f'{img_dir}/{idx}.jpg')
+                    print(f"[Achieved goal] {obs.get('achieved_goal')}; [Desired goal] {obs.get('desired_goal')}; "
+                          f"[Goal] {infos[0].get('goal')}", file=log)
+                frames.append(pixels)
 
             episode_reward += reward[0]
             ep_len += 1
@@ -243,8 +276,8 @@ def enjoy() -> None:  # noqa: C901
                 if done and not is_atari and args.verbose > 0:
                     # NOTE: for env using VecNormalize, the mean reward
                     # is a normalized reward when `--norm_reward` flag is passed
-                    print(f"Episode Reward: {episode_reward:.2f}")
-                    print("Episode Length", ep_len)
+                    print(f"Episode Reward: {episode_reward:.2f}", file=log)
+                    print("Episode Length", ep_len, file=log)
                     episode_rewards.append(episode_reward)
                     episode_lengths.append(ep_len)
                     episode_reward = 0.0
@@ -261,17 +294,26 @@ def enjoy() -> None:  # noqa: C901
 
     except KeyboardInterrupt:
         pass
-
     if args.verbose > 0 and len(successes) > 0:
-        print(f"Success rate: {100 * np.mean(successes):.2f}%")
+        print(f"Success rate: {100 * np.mean(successes):.2f}%", file=log)
 
     if args.verbose > 0 and len(episode_rewards) > 0:
-        print(f"{len(episode_rewards)} Episodes")
-        print(f"Mean reward: {np.mean(episode_rewards):.2f} +/- {np.std(episode_rewards):.2f}")
+        print(f"{len(episode_rewards)} Episodes", file=log)
+        print(f"Mean reward: {np.mean(episode_rewards):.2f} +/- {np.std(episode_rewards):.2f}", file=log)
 
     if args.verbose > 0 and len(episode_lengths) > 0:
-        print(f"Mean episode length: {np.mean(episode_lengths):.2f} +/- {np.std(episode_lengths):.2f}")
+        print(f"Mean episode length: {np.mean(episode_lengths):.2f} +/- {np.std(episode_lengths):.2f}",
+              file=log)
 
+    if not args.no_render:
+        video_name = "./video/temp001.avi"
+        height, width, _ = frames[0].shape
+        fps = 10
+        fourcc = cv2.VideoWriter_fourcc(*'MP42')
+        video = cv2.VideoWriter(video_name, fourcc, fps, (width, height))
+        for idx in range(len(frames)):
+            video.write(frames[idx])
+        video.release()
     env.close()
 
 

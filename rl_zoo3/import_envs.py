@@ -1,9 +1,12 @@
 from typing import Optional
 
 import gymnasium as gym
+import sys
 from gymnasium.envs.registration import register
 
 from rl_zoo3.wrappers import MaskVelocityWrapper
+
+sys.path.append("D:\Osiris\Python\Projects\Sim2Real\MyCobotGym")
 
 try:
     import pybullet_envs  # pytype: disable=import-error
@@ -54,6 +57,11 @@ try:
     import minigrid  # pytype: disable=import-error
 except ImportError:
     minigrid = None
+
+try:
+    import mycobotgym
+except ImportError:
+    mycobotgym = None
 
 
 # Register no vel envs
